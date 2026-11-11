@@ -70,7 +70,11 @@ const LEVELS = [
   { id: 2, name: "英檢中級", desc: "GEPT 中級・CEFR B1" },
   { id: 3, name: "英檢中高級", desc: "GEPT 中高級・CEFR B2" },
   { id: 4, name: "多益", desc: "TOEIC Service List" },
-  { id: 5, name: "托福學術", desc: "New Academic Word List" }
+  { id: 5, name: "托福學術", desc: "New Academic Word List" },
+  { id: 6, name: "高頻進階", desc: "ECDICT 語料庫高頻字" },
+  { id: 7, name: "托福進階", desc: "ECDICT 托福字彙" },
+  { id: 8, name: "雅思", desc: "ECDICT 雅思字彙" },
+  { id: 9, name: "GRE", desc: "ECDICT GRE 字彙" }
 ];
 const TABS = [
   ["card", "單字卡"], ["quiz", "測驗"], ["en", "純英文"], ["dict", "聽寫"], ["gram", "文法"], ["me", "進度"]
@@ -232,7 +236,8 @@ function viewCard(root, opts = {}) {
   const w = s.list[s.i];
   root.append(...progressLine(s.i, s.list.length));
   const card = el("div", { class: "card", style: "cursor:pointer;min-height:220px", onclick: () => { s.flip = true; render(); } },
-    el("div", {}, el("span", { class: "word" }, w.w), speakBtn(w.w), w.p ? el("span", { class: "pos" }, w.p) : null));
+    el("div", {}, el("span", { class: "word" }, w.w), speakBtn(w.w), w.p ? el("span", { class: "pos" }, w.p) : null),
+    w.ph ? el("div", { class: "mute" }, "/" + w.ph + "/") : null);
   if (!s.flip) card.append(el("div", { class: "mute", style: "margin-top:40px" }, english ? "先在心裡用英文說出意思，再點一下看解釋" : "先想想中文意思，點一下翻面"));
   else {
     if (!english && w.zh) card.append(el("div", { class: "zh" }, w.zh));
@@ -530,6 +535,7 @@ function viewMe(root) {
   root.append(el("div", { class: "card mute" }, el("b", {}, "資料來源"),
     el("div", {}, "英檢初級／中級／中高級：語言訓練測驗中心「全民英檢參考字表」（113 年修訂版）。"),
     el("div", {}, "多益：TOEIC Service List 1.2，托福學術：New Academic Word List 1.2，皆由 Browne、Culligan、Phillips 編製，CC BY-SA 4.0 授權（newgeneralservicelist.com）。"),
+    el("div", {}, "高頻進階、托福進階、雅思、GRE 與多益／托福學術的中文補充：ECDICT（skywind3000，MIT 授權），簡轉繁使用 OpenCC。"),
     el("div", {}, "英英解釋與例句：Princeton WordNet 3.0。文法題為自編內容。")));
 }
 
