@@ -375,7 +375,7 @@ function renderQuestionScreen(){
     }
     optionsHtml += `
       <button class="${cls}" data-idx="${i}" ${disabled}>
-        <span class="option-letter">${String.fromCharCode(65+i)}</span>
+        <span class="option-letter">${String.fromCharCode(65+i)}<small class="key-num">${i+1}</small></span>
         <span>${opt}</span>
       </button>
     `;
@@ -388,7 +388,7 @@ function renderQuestionScreen(){
     } else {
       feedbackHtml = `<div class="feedback bad"><div class="fb-head">正確答案：${q.correct}</div>${q.ex}</div>`;
     }
-    feedbackHtml += `<button class="next-btn" id="nextBtn">${idx === currentSet.length-1 ? "查看結果" : "下一題"}</button>`;
+    feedbackHtml += `<div class="next-bar"><button class="next-btn" id="nextBtn">${idx === currentSet.length-1 ? "查看結果" : "下一題"}<span class="key-hint">Enter</span></button></div>`;
   }
 
   return `
@@ -408,7 +408,8 @@ function renderQuestionScreen(){
       </div>
       <div class="perforation"><div class="notch left"></div><div class="notch right"></div></div>
       <div class="pass-bottom">
-        ${optionsHtml}
+        <div class="opt-grid">${optionsHtml}</div>
+        ${answeredState ? "" : '<div class="kbd-tip">鍵盤：按 1–4 或 A–D 作答，答完按 Enter 下一題</div>'}
         ${feedbackHtml}
       </div>
     </div>
@@ -583,7 +584,11 @@ function render(){
     if(!answeredState){
       app.querySelectorAll(".option-btn").forEach(btn => btn.addEventListener("click", onSelectOption));
     } else {
-      document.getElementById("nextBtn").addEventListener("click", onNext);
+      const nb = document.getElementById("nextBtn");
+      nb.addEventListener("click", onNext);
+      const fb = app.querySelector(".feedback");
+      if(fb) fb.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      nb.focus({ preventScroll: true });
     }
   } else if(screen === "summary"){
     app.innerHTML = renderSummaryScreen();
@@ -651,7 +656,34 @@ function onNext(){
   idx += 1;
   if(idx >= currentSet.length) screen = "summary";
   render();
+  scrollToCard();
 }
+
+// 換題時把票卡捲到畫面頂端，電腦和手機都不用自己往回滑
+function scrollToCard(){
+  const card = app.querySelector(".pass-card");
+  if(card && card.getBoundingClientRect().top < 0) card.scrollIntoView({ block: "start" });
+  else if(!card) window.scrollTo(0, 0);
+}
+
+// 鍵盤操作：1–4 或 A–D 作答，Enter／空白鍵／→ 下一題
+document.addEventListener("keydown", (e) => {
+  if(screen !== "question" || e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = (e.target && e.target.tagName) || "";
+  if(tag === "INPUT" || tag === "TEXTAREA") return;
+  if(!answeredState){
+    const k = e.key.toLowerCase();
+    let i = "1234".indexOf(k);
+    if(i < 0) i = "abcd".indexOf(k);
+    if(i >= 0){
+      const btn = app.querySelector(`.option-btn[data-idx="${i}"]`);
+      if(btn){ e.preventDefault(); btn.click(); }
+    }
+  } else if(e.key === "Enter" || e.key === " " || e.key === "ArrowRight"){
+    e.preventDefault();
+    onNext();
+  }
+});
 
 async function startNewSet(filter){
   currentFilter = filter !== undefined ? filter : currentFilter;

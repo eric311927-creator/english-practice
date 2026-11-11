@@ -42,6 +42,12 @@ input[type=text],input[type=password],select{width:100%;padding:12px;border:1px 
 .toast.show{opacity:1}
 table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left}
 .hide{display:none}
+.row.sticky{position:sticky;bottom:0;z-index:3;margin:14px -18px -18px;padding:12px 18px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 35%);border-radius:0 0 14px 14px}
+.row.sticky.out{margin:14px 0 0;background:linear-gradient(to bottom,rgba(245,246,248,0),var(--bg) 35%);border-radius:0}
+.kbd{display:none}
+@media (hover:hover) and (pointer:fine){.kbd{display:inline-block;margin-left:8px;font-size:12px;opacity:.65;border:1px solid currentColor;border-radius:5px;padding:0 5px}.kbd-tip{display:block!important}}
+.kbd-tip{display:none;margin-top:8px;text-align:center;font-size:13px;color:var(--mute)}
+@media (min-width:720px){main{max-width:760px}.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}.opts .opt{margin-top:0;height:100%}}
 label.sw{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--mute)}
 details summary{cursor:pointer;color:var(--pri)}
 </style>
@@ -126,6 +132,19 @@ function drawWho() {
   if (user) w.append(el("span", {}, cloudErr ? "⚠ 雲端同步失敗" : "☁ 已同步"), el("button", { onclick: () => signOut(auth) }, "登出"));
   else w.append(el("span", {}, "未登入"), el("button", { onclick: () => signInWithPopup(auth, new GoogleAuthProvider()).catch((e) => toast("登入失敗：" + (e.code || e.message))) }, "登入同步"));
 }
+
+// ===== 鍵盤操作 =====
+let KEYS = {};
+document.addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA") && !t.disabled) return;
+  const k = e.key === " " ? "Space" : e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  const fn = KEYS[k] || (k === "Space" || k === "ArrowRight" ? KEYS["Enter"] : null);
+  if (fn) { e.preventDefault(); fn(); }
+});
+function goNext(fn) { fn(); render(); const c = document.querySelector("#app .card"); if (c && c.getBoundingClientRect().top < 60) window.scrollTo({ top: Math.max(0, c.offsetTop - 70) }); }
+function nextRow(label, fn) { KEYS["Enter"] = () => goNext(fn); return el("div", { class: "row sticky" }, el("button", { class: "btn", onclick: () => goNext(fn) }, label, el("span", { class: "kbd" }, "Enter"))); }
 
 // ===== 小工具 =====
 const $ = (s) => document.querySelector(s);
@@ -235,10 +254,11 @@ function viewCard(root, opts = {}) {
   if (s.i >= s.list.length) return root.append(doneCard(() => { session = null; render(); }));
   const w = s.list[s.i];
   root.append(...progressLine(s.i, s.list.length));
+  if (!s.flip) { KEYS["Enter"] = KEYS["Space"] = () => { s.flip = true; render(); }; }
   const card = el("div", { class: "card", style: "cursor:pointer;min-height:220px", onclick: () => { s.flip = true; render(); } },
     el("div", {}, el("span", { class: "word" }, w.w), speakBtn(w.w), w.p ? el("span", { class: "pos" }, w.p) : null),
     w.ph ? el("div", { class: "mute" }, "/" + w.ph + "/") : null);
-  if (!s.flip) card.append(el("div", { class: "mute", style: "margin-top:40px" }, english ? "先在心裡用英文說出意思，再點一下看解釋" : "先想想中文意思，點一下翻面"));
+  if (!s.flip) card.append(el("div", { class: "mute", style: "margin-top:40px" }, english ? "先在心裡用英文說出意思，再點一下看解釋" : "先想想中文意思，點一下翻面"), el("div", { class: "kbd-tip" }, "鍵盤：空白鍵翻面，翻面後按 1 不會／2 模糊／3 記得"));
   else {
     if (!english && w.zh) card.append(el("div", { class: "zh" }, w.zh));
     if (w.d) card.append(el("div", { class: "def" }, english ? w.d : "📖 " + w.d));
@@ -246,12 +266,13 @@ function viewCard(root, opts = {}) {
   }
   root.append(card);
   if (s.flip) {
-    const next = (ok, partial) => { grade(w, ok, partial); if (!ok && !partial) addUnf(w, true); s.i++; s.flip = false; render(); };
+    const next = (ok, partial) => goNext(() => { grade(w, ok, partial); if (!ok && !partial) addUnf(w, true); s.i++; s.flip = false; });
+    KEYS["1"] = () => next(false); KEYS["2"] = () => next(false, true); KEYS["3"] = () => next(true);
     card.append(el("button", { class: "chip", style: "margin-top:12px", onclick: (e) => { e.stopPropagation(); addUnf(w); render(); } }, S.unf[key(w)] ? "✓ 已在生字本" : "＋ 加入生字本"));
-    root.append(el("div", { class: "row" },
-      el("button", { class: "btn red", onclick: () => next(false) }, english ? "Forgot" : "不會"),
-      el("button", { class: "btn amber", onclick: () => next(false, true) }, english ? "Unsure" : "模糊"),
-      el("button", { class: "btn green", onclick: () => next(true) }, english ? "Got it" : "記得")));
+    root.append(el("div", { class: "row sticky out" },
+      el("button", { class: "btn red", onclick: () => next(false) }, english ? "Forgot" : "不會", el("span", { class: "kbd" }, "1")),
+      el("button", { class: "btn amber", onclick: () => next(false, true) }, english ? "Unsure" : "模糊", el("span", { class: "kbd" }, "2")),
+      el("button", { class: "btn green", onclick: () => next(true) }, english ? "Got it" : "記得", el("span", { class: "kbd" }, "3"))));
   }
 }
 
@@ -280,17 +301,19 @@ function mcq(root, cfg) {
   const w = s.list[s.i];
   root.append(...progressLine(s.i, s.list.length));
   const card = el("div", { class: "card" }, cfg.prompt(w));
-  s.opts[s.i].forEach((o) => {
+  const opts = el("div", { class: "opts" }); card.append(opts);
+  s.opts[s.i].forEach((o, oi) => {
     let cls = "opt";
     if (s.ans) { if (o === w) cls += " right"; else if (o === s.ans) cls += " wrong"; }
-    card.append(el("button", { class: cls, disabled: s.ans ? "" : false, onclick: () => {
-      s.ans = o; const ok = o === w; if (ok) s.score++; grade(w, ok); render();
-    } }, cfg.label(o)));
+    const pick = () => { s.ans = o; const ok = o === w; if (ok) s.score++; grade(w, ok); render(); };
+    if (!s.ans) KEYS[String(oi + 1)] = KEYS["abcd"[oi]] = pick;
+    opts.append(el("button", { class: cls, disabled: s.ans ? "" : false, onclick: pick }, el("span", { class: "kbd", style: "margin:0 8px 0 0" }, oi + 1), cfg.label(o)));
   });
+  if (!s.ans) card.append(el("div", { class: "kbd-tip" }, "鍵盤：按 1–4 作答，答完按 Enter 下一題"));
   if (s.ans) {
     const ok = s.ans === w;
     card.append(el("div", { class: "fb" }, el("b", {}, ok ? "✅ 答對" : "❌ 正解：" + cfg.label(w)), ...cfg.after(w).filter(Boolean)));
-    card.append(el("div", { class: "row" }, el("button", { class: "btn", onclick: () => { s.i++; s.ans = null; render(); } }, "下一題")));
+    card.append(nextRow("下一題", () => { s.i++; s.ans = null; }));
   }
   root.append(card);
 }
@@ -348,7 +371,7 @@ function viewEnglish(root) {
     const ok = s.ans.toLowerCase() === w.w.toLowerCase();
     card.append(el("div", { class: "fb" }, el("b", {}, ok ? "✅ Correct: " : "❌ Answer: "), el("span", { class: "word", style: "font-size:22px" }, w.w), speakBtn(w.w),
       w.ex ? el("div", { class: "ex" }, "“" + w.ex + "”") : null));
-    card.append(el("div", { class: "row" }, el("button", { class: "btn", onclick: () => { s.i++; s.ans = null; s.hint = 0; render(); } }, "Next")));
+    card.append(nextRow("Next", () => { s.i++; s.ans = null; s.hint = 0; }));
   }
   root.append(card);
 }
@@ -439,7 +462,7 @@ function viewDictation(root) {
       w.d ? el("div", {}, "📖 " + w.d) : null,
       w.ex ? el("div", { class: "ex" }, "“" + w.ex + "”") : null,
       sc ? el("div", { class: "mute", style: "margin-top:6px" }, `生字本熟悉度：聽寫 ${sc[0]}・中翻英 ${sc[1]}（0 代表已熟）`) : null));
-    card.append(el("div", { class: "row" }, el("button", { class: "btn", onclick: () => { s.i++; s.tries = 0; s.done = false; s.last = ""; render(); } }, "下一題")));
+    card.append(nextRow("下一題", () => { s.i++; s.tries = 0; s.done = false; s.last = ""; }));
   }
   root.append(card);
 }
@@ -486,19 +509,23 @@ function viewGrammar(root) {
   const g = s.list[s.i];
   root.append(...progressLine(s.i, s.list.length));
   const card = el("div", { class: "card" }, el("div", { class: "mute" }, "【" + g.tag + "】"), el("div", { class: "def", style: "font-size:19px" }, g.q));
+  const opts = el("div", { class: "opts" }); card.append(opts);
   g.o.forEach((o, idx) => {
     let cls = "opt";
     if (s.ans != null) { if (idx === g.a) cls += " right"; else if (idx === s.ans) cls += " wrong"; }
-    card.append(el("button", { class: cls, disabled: s.ans != null ? "" : false, onclick: () => {
+    const pick = () => {
       s.ans = idx; const ok = idx === g.a; if (ok) s.score++;
       const r = (S.gram[g.q] = S.gram[g.q] || { r: 0, w: 0 }); ok ? r.r++ : r.w++;
       const t = (S.tags[g.tag] = S.tags[g.tag] || { r: 0, w: 0 }); ok ? t.r++ : t.w++;
       logHist(g.lv, ok); save(); render();
-    } }, String.fromCharCode(65 + idx) + ". " + o));
+    };
+    if (s.ans == null) KEYS[String(idx + 1)] = KEYS["abcd"[idx]] = pick;
+    opts.append(el("button", { class: cls, disabled: s.ans != null ? "" : false, onclick: pick }, String.fromCharCode(65 + idx) + ". " + o));
   });
+  if (s.ans == null) card.append(el("div", { class: "kbd-tip" }, "鍵盤：按 1–4 或 A–D 作答，答完按 Enter 下一題"));
   if (s.ans != null) {
     card.append(el("div", { class: "fb" }, el("b", {}, s.ans === g.a ? "✅ 答對　" : "❌ 正解 " + String.fromCharCode(65 + g.a) + "　"), g.e));
-    card.append(el("div", { class: "row" }, el("button", { class: "btn", onclick: () => { s.i++; s.ans = null; render(); } }, "下一題")));
+    card.append(nextRow("下一題", () => { s.i++; s.ans = null; }));
   }
   root.append(card);
 }
@@ -541,6 +568,7 @@ function viewMe(root) {
 
 // ===== 主畫面 =====
 function render() {
+  KEYS = {};
   const nav = $("#tabs"); nav.innerHTML = "";
   TABS.forEach(([k, t]) => nav.append(el("button", { class: tab === k ? "on" : "", onclick: () => { if (tab !== k) { tab = k; session = null; render(); window.scrollTo(0, 0); } } }, t)));
   const root = $("#app"); root.innerHTML = "";

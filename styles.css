@@ -224,3 +224,23 @@ body{
 @media (prefers-reduced-motion: reduce){
   .option-btn, .next-btn{ transition:none; }
 }
+
+/* ---- 作答操作：下一題固定在畫面底部、鍵盤提示、電腦版兩欄選項 ---- */
+.next-bar{
+  position:sticky; bottom:0; z-index:3;
+  margin:0 -22px -22px; padding:12px 22px calc(14px + env(safe-area-inset-bottom));
+  background:linear-gradient(to bottom, rgba(247,241,225,0), var(--paper) 35%);
+  border-radius:0 0 20px 20px;
+}
+.next-bar .next-btn{ margin-top:0; }
+.key-hint, .key-num, .kbd-tip{ display:none; }
+.opt-grid .option-btn{ margin-bottom:10px; }
+@media (hover:hover) and (pointer:fine){
+  .key-hint{ display:inline-block; margin-left:10px; font-family:'IBM Plex Mono', monospace; font-size:.7rem; opacity:.6; border:1px solid currentColor; border-radius:5px; padding:1px 5px; }
+  .kbd-tip{ display:block; margin-top:10px; text-align:center; font-size:.72rem; color:var(--muted); }
+}
+@media (min-width:760px){
+  .app-shell{ max-width:680px; }
+  .opt-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .opt-grid .option-btn{ margin-bottom:0; height:100%; }
+}
