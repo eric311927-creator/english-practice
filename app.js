@@ -101,7 +101,9 @@ async function loadData(uid){
 async function saveData(data){
   if(!currentUser) return;
   try{
-    await setDoc(doc(db, "users", currentUser.uid), data);
+    // vocab 欄位由 vocab.html 管理，這裡不寫入，用 merge 避免蓋掉它
+    const { vocab, ...rest } = data;
+    await setDoc(doc(db, "users", currentUser.uid), rest, { merge: true });
     storageOk = true;
     storageErrorMsg = null;
   }catch(e){
@@ -341,6 +343,10 @@ function renderHome(){
           錯題複習
           <span class="cat-sub">${lapsedCount} 題曾答錯 · 選項每次重新排列</span>
         </button>` : ""}
+        <a class="cat-btn full" href="vocab.html" style="display:block;text-decoration:none;margin-top:10px;">
+          單字・聽寫・生字本
+          <span class="cat-sub">英檢初／中／中高級・多益・托福 約一萬字，難度漸進</span>
+        </a>
         <button class="ghost-btn" id="dashboardBtn">查看學習儀表板</button>
         ${hasLapses ? `<button class="ghost-btn" id="viewMistakesBtn">查看常錯題目</button>` : ""}
       </div>

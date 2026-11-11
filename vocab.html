@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>單字・聽寫｜英語練習登機證</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#1f2937;--mute:#6b7280;--line:#e5e7eb;--pri:#2563eb;--ok:#059669;--bad:#dc2626;--warn:#d97706}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif;background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transparent}
+header{position:sticky;top:0;z-index:5;background:#16243C;color:#F7F1E1;padding:10px 12px 0}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:6px}.top a{color:#D9A441;text-decoration:none;font-size:14px;white-space:nowrap}.top h1{white-space:nowrap}.who{margin-left:auto;font-size:12px;color:rgba(247,241,225,.7);display:flex;gap:8px;align-items:center}.who button{border:1px solid #D9A441;background:none;color:#D9A441;border-radius:8px;padding:4px 8px;font-size:12px;cursor:pointer}
+h1{font-size:18px;margin:0}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tabs button{flex:0 0 auto;border:0;background:none;padding:9px 12px;font-size:15px;color:rgba(247,241,225,.65);border-bottom:3px solid transparent;cursor:pointer}
+.tabs button.on{color:#F7F1E1;border-color:#D9A441;font-weight:600}
+main{max-width:640px;margin:0 auto;padding:14px 12px 80px}
+.bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-size:14px;cursor:pointer}
+.chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.chip.lock{opacity:.45}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:12px}
+.word{font-size:30px;font-weight:700;letter-spacing:.3px;word-break:break-word}
+.pos{color:var(--mute);font-size:14px;margin-left:6px}
+.zh{font-size:20px;margin-top:10px}
+.def{font-size:17px;margin-top:10px;line-height:1.5}
+.ex{font-style:italic;color:#374151;margin-top:8px;line-height:1.5}
+.mute{color:var(--mute);font-size:14px}
+.row{display:flex;gap:8px;margin-top:14px}
+.btn{flex:1;border:0;border-radius:10px;padding:13px 10px;font-size:16px;cursor:pointer;background:var(--pri);color:#fff}
+.btn.gray{background:#e5e7eb;color:var(--ink)}
+.btn.red{background:var(--bad)}.btn.amber{background:var(--warn)}.btn.green{background:var(--ok)}
+.opt{display:block;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:10px;padding:13px 14px;font-size:16px;margin-top:8px;cursor:pointer;line-height:1.4}
+.opt:disabled{color:var(--ink);opacity:1;cursor:default}
+.opt.right{border-color:var(--ok);background:#ecfdf5}.opt.wrong{border-color:var(--bad);background:#fef2f2}
+.fb{margin-top:12px;padding:12px;border-radius:10px;background:#f3f4f6;line-height:1.55}
+.prog{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin:4px 0 12px}
+.prog i{display:block;height:100%;background:var(--pri);transition:width .3s}
+.speak{border:0;background:none;font-size:22px;cursor:pointer;vertical-align:middle}
+input[type=text],input[type=password],select{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;margin-top:6px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:10px;font-size:15px;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%}
+.toast.show{opacity:1}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left}
+.hide{display:none}
+label.sw{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--mute)}
+details summary{cursor:pointer;color:var(--pri)}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><a href="index.html">← 登機證</a><h1>單字・聽寫</h1><div class="who" id="who"></div></div>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+<main id="app"><p class="mute">載入題庫中…</p></main>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+// ===== Firebase：和登機證共用同一個 Google 帳號，進度存在 users/{uid}.vocab =====
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig } from "./firebase-config.js";
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp), db = getFirestore(fbApp);
+let user = null, cloudTimer = null, cloudErr = "";
+
+// ===== 設定 =====
+const REPO = { USER: "eric311927-creator", REPO: "english-practice" };
+const LEVELS = [
+  { id: 1, name: "英檢初級", desc: "GEPT 初級・CEFR A2" },
+  { id: 2, name: "英檢中級", desc: "GEPT 中級・CEFR B1" },
+  { id: 3, name: "英檢中高級", desc: "GEPT 中高級・CEFR B2" },
+  { id: 4, name: "多益", desc: "TOEIC Service List" },
+  { id: 5, name: "托福學術", desc: "New Academic Word List" }
+];
+const TABS = [
+  ["card", "單字卡"], ["quiz", "測驗"], ["en", "純英文"], ["dict", "聽寫"], ["gram", "文法"], ["travel", "旅行"], ["me", "進度"]
+];
+const SESSION = 10;          // 每回合題數
+const PASS_RATE = 0.8;       // 升級門檻
+const PASS_WINDOW = 30;      // 最近幾題計算正確率
+const BOX_DAYS = [0, 1, 2, 4, 8, 16, 32]; // 間隔複習天數
+
+// ===== 狀態 =====
+let BANK = [], TRAVEL = [], GRAMMAR = [];
+let S = load();
+let tab = "card";
+let session = null;
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem("engapp") || "{}");
+    return Object.assign({ lv: 1, auto: true, words: {}, hist: {}, gram: {}, tags: {}, dir: "en2zh", enMode: "card", dMode: "new", tTopic: "全部", ai: {}, unf: {}, glance: {} }, s);
+  } catch (e) { return { lv: 1, auto: true, words: {}, hist: {}, gram: {}, tags: {}, dir: "en2zh", enMode: "card", dMode: "new", tTopic: "全部", ai: {}, unf: {}, glance: {} }; }
+}
+function save() {
+  S.ts = Date.now();
+  try { localStorage.setItem("engapp", JSON.stringify(S)); } catch (e) {}
+  if (user) { clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 1500); }
+}
+function cloudCopy() { const c = Object.assign({}, S); delete c.ai; return JSON.parse(JSON.stringify(c)); }
+async function pushCloud() {
+  if (!user) return;
+  const ref = doc(db, "users", user.uid);
+  try { await updateDoc(ref, { vocab: cloudCopy() }); cloudErr = ""; }
+  catch (e) {
+    try { await setDoc(ref, { vocab: cloudCopy() }, { merge: true }); cloudErr = ""; }
+    catch (e2) { cloudErr = e2.code || e2.message || String(e2); }
+  }
+  drawWho();
+}
+async function pullCloud() {
+  try {
+    const snap = await getDoc(doc(db, "users", user.uid));
+    const v = snap.exists() && snap.data().vocab;
+    if (v && (v.ts || 0) > (S.ts || 0)) { const ai = S.ai; S = Object.assign(load(), v, { ai }); try { localStorage.setItem("engapp", JSON.stringify(S)); } catch (e) {} }
+    else if (S.ts) pushCloud();
+  } catch (e) { cloudErr = e.code || e.message || String(e); }
+}
+function drawWho() {
+  const w = document.getElementById("who"); if (!w) return;
+  w.innerHTML = "";
+  if (user) w.append(el("span", {}, cloudErr ? "⚠ 雲端同步失敗" : "☁ 已同步"), el("button", { onclick: () => signOut(auth) }, "登出"));
+  else w.append(el("span", {}, "未登入"), el("button", { onclick: () => signInWithPopup(auth, new GoogleAuthProvider()).catch((e) => toast("登入失敗：" + (e.code || e.message))) }, "登入同步"));
+}
+
+// ===== 小工具 =====
+const $ = (s) => document.querySelector(s);
+function el(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) n.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) n.append(k.nodeType ? k : document.createTextNode(String(k)));
+  return n;
+}
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2600); }
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function today() { return Math.floor(Date.now() / 86400000); }
+function key(w) { return w.lv + ":" + w.w; }
+function speak(text) {
+  if (!("speechSynthesis" in window)) return toast("這台裝置不支援語音");
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text); u.lang = "en-US"; u.rate = 0.9; speechSynthesis.speak(u);
+}
+const speakBtn = (t) => el("button", { class: "speak", title: "發音", onclick: (e) => { e.stopPropagation(); speak(t); } }, "🔊");
+function blankOut(sentence, word) {
+  const stem = word.split(" ")[0];
+  const base = stem.length > 4 ? stem.slice(0, stem.length - 2) : stem;
+  const re = new RegExp("\\b" + base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[a-z]*", "gi");
+  return sentence.replace(re, "_____");
+}
+
+// ===== 記憶盒（間隔複習）=====
+function rec(w) { return S.words[key(w)] || { b: 0, due: 0, seen: 0 }; }
+function grade(w, ok, partial) {
+  const r = rec(w);
+  r.seen++;
+  if (ok) r.b = Math.min(r.b + 1, BOX_DAYS.length - 1);
+  else if (partial) r.b = Math.max(r.b, 1);
+  else r.b = 0;
+  r.due = today() + (ok || partial ? BOX_DAYS[r.b] : 0);
+  S.words[key(w)] = r;
+  logHist(w.lv, ok);
+  save();
+}
+function logHist(lv, ok) {
+  const h = (S.hist[lv] = S.hist[lv] || []);
+  h.push(ok ? 1 : 0); if (h.length > 200) h.shift();
+  checkLevelUp(lv);
+}
+function rate(lv) { const h = (S.hist[lv] || []).slice(-PASS_WINDOW); return h.length ? h.reduce((a, b) => a + b, 0) / h.length : 0; }
+function unlocked(lv) { if (lv === 1) return true; const h = S.hist[lv - 1] || []; return h.length >= PASS_WINDOW && rate(lv - 1) >= PASS_RATE || (S.hist[lv] || []).length > 0; }
+function checkLevelUp(lv) {
+  if (!S.auto || lv !== S.lv || lv >= LEVELS.length) return;
+  const h = S.hist[lv] || [];
+  if (h.length >= PASS_WINDOW && rate(lv) >= PASS_RATE) {
+    S.lv = lv + 1;
+    toast(`🎉 最近 ${PASS_WINDOW} 題正確率 ${Math.round(rate(lv) * 100)}%，升到「${LEVELS[lv].name}」`);
+  }
+}
+
+// 出題：先到期複習，再補新字
+function pickWords(pool, n) {
+  const t = today();
+  const due = shuffle(pool.filter((w) => { const r = S.words[key(w)]; return r && r.seen && r.due <= t; }));
+  const fresh = shuffle(pool.filter((w) => !S.words[key(w)]));
+  const rest = shuffle(pool.filter((w) => { const r = S.words[key(w)]; return r && r.due > t; }));
+  return due.concat(fresh, rest).slice(0, n);
+}
+function levelPool(filter) { return BANK.filter((w) => w.lv === S.lv && filter(w)); }
+function distractors(pool, ans, field, n = 3) {
+  const seen = new Set([ans[field]]); const out = [];
+  for (const w of shuffle(pool)) { if (out.length >= n) break; if (w[field] && !seen.has(w[field])) { seen.add(w[field]); out.push(w); } }
+  return out;
+}
+
+// ===== 共用 UI =====
+function levelBar() {
+  const bar = el("div", { class: "bar" });
+  LEVELS.forEach((L) => {
+    const on = S.lv === L.id, lock = !unlocked(L.id);
+    bar.append(el("button", { class: "chip" + (on ? " on" : "") + (lock ? " lock" : ""), title: L.desc,
+      onclick: () => { if (lock && !confirm(`「${LEVELS[L.id - 2].name}」還沒達到 ${PASS_RATE * 100}%，確定直接跳到「${L.name}」？`)) return; S.lv = L.id; save(); session = null; render(); } },
+      (lock ? "🔒 " : "") + L.name));
+  });
+  bar.append(el("label", { class: "sw" }, el("input", { type: "checkbox", checked: S.auto ? "" : false, onchange: (e) => { S.auto = e.target.checked; save(); } }), "漸進自動升級"));
+  return bar;
+}
+function progressLine(i, n) {
+  return [el("div", { class: "mute" }, `${LEVELS[S.lv - 1].name}・第 ${Math.min(i + 1, n)} / ${n} 題・本級最近正確率 ${Math.round(rate(S.lv) * 100)}%`),
+    el("div", { class: "prog" }, el("i", { style: `width:${(i / n) * 100}%` }))];
+}
+function doneCard(again, extra) {
+  return el("div", { class: "card" },
+    el("div", { class: "word" }, "✅ 本回合完成"),
+    extra ? el("div", { class: "def" }, extra) : null,
+    el("div", { class: "row" }, el("button", { class: "btn", onclick: again }, "再來一回合")));
+}
+
+// ===== 單字卡（中英）=====
+function viewCard(root, opts = {}) {
+  const english = !!opts.english;
+  const travel = !!opts.travel;
+  if (!session || session.kind !== (opts.kind || "card")) {
+    const pool = travel ? travelPool() : levelPool((w) => english ? w.d : w.zh);
+    session = { kind: opts.kind || "card", list: pickWords(pool, SESSION), i: 0, flip: false };
+  }
+  const s = session;
+  if (!s.list.length) return root.append(el("div", { class: "card" }, "這個分類沒有單字。"));
+  if (s.i >= s.list.length) return root.append(doneCard(() => { session = null; render(); }));
+  const w = s.list[s.i];
+  if (!travel) root.append(...progressLine(s.i, s.list.length));
+  else root.append(el("div", { class: "mute" }, `第 ${s.i + 1} / ${s.list.length} 張・${w.t || ""}`));
+  const card = el("div", { class: "card", style: "cursor:pointer;min-height:220px", onclick: () => { s.flip = true; render(); } },
+    el("div", {}, el("span", { class: "word" }, w.w), speakBtn(w.w), w.p ? el("span", { class: "pos" }, w.p) : null));
+  if (!s.flip) card.append(el("div", { class: "mute", style: "margin-top:40px" }, english ? "先在心裡用英文說出意思，再點一下看解釋" : "先想想中文意思，點一下翻面"));
+  else {
+    if (!english && w.zh) card.append(el("div", { class: "zh" }, w.zh));
+    if (w.d) card.append(el("div", { class: "def" }, english ? w.d : "📖 " + w.d));
+    if (w.ex) card.append(el("div", { class: "ex" }, "“" + w.ex + "”", speakBtn(w.ex)));
+  }
+  root.append(card);
+  if (s.flip) {
+    const next = (ok, partial) => { grade(w, ok, partial); if (!ok && !partial) addUnf(w, true); s.i++; s.flip = false; render(); };
+    card.append(el("button", { class: "chip", style: "margin-top:12px", onclick: (e) => { e.stopPropagation(); addUnf(w); render(); } }, S.unf[key(w)] ? "✓ 已在生字本" : "＋ 加入生字本"));
+    root.append(el("div", { class: "row" },
+      el("button", { class: "btn red", onclick: () => next(false) }, english ? "Forgot" : "不會"),
+      el("button", { class: "btn amber", onclick: () => next(false, true) }, english ? "Unsure" : "模糊"),
+      el("button", { class: "btn green", onclick: () => next(true) }, english ? "Got it" : "記得")));
+  }
+}
+
+// ===== 選擇題測驗（中英）=====
+function viewQuiz(root) {
+  const bar = el("div", { class: "bar" });
+  [["en2zh", "看英文選中文"], ["zh2en", "看中文選英文"]].forEach(([k, t]) =>
+    bar.append(el("button", { class: "chip" + (S.dir === k ? " on" : ""), onclick: () => { S.dir = k; save(); session = null; render(); } }, t)));
+  root.append(bar);
+  if (!session || session.kind !== "quiz") {
+    const pool = levelPool((w) => w.zh);
+    session = { kind: "quiz", pool, list: pickWords(pool, SESSION), i: 0, ans: null, score: 0 };
+    session.opts = session.list.map((w) => shuffle([w, ...distractors(pool, w, S.dir === "en2zh" ? "zh" : "w")]));
+  }
+  mcq(root, {
+    prompt: (w) => S.dir === "en2zh" ? el("div", {}, el("span", { class: "word" }, w.w), speakBtn(w.w), el("span", { class: "pos" }, w.p)) : el("div", { class: "zh", style: "font-size:24px" }, w.zh),
+    label: (o) => S.dir === "en2zh" ? o.zh : o.w,
+    after: (w) => [w.zh && S.dir === "zh2en" ? null : null, w.d ? el("div", {}, "📖 " + w.d) : null, w.ex ? el("div", { class: "ex" }, w.ex) : null]
+  });
+}
+
+// 共用四選一流程
+function mcq(root, cfg) {
+  const s = session;
+  if (s.i >= s.list.length) return root.append(doneCard(() => { session = null; render(); }, `答對 ${s.score} / ${s.list.length}`));
+  const w = s.list[s.i];
+  root.append(...progressLine(s.i, s.list.length));
+  const card = el("div", { class: "card" }, cfg.prompt(w));
+  s.opts[s.i].forEach((o) => {
+    let cls = "opt";
+    if (s.ans) { if (o === w) cls += " right"; else if (o === s.ans) cls += " wrong"; }
+    card.append(el("button", { class: cls, disabled: s.ans ? "" : false, onclick: () => {
+      s.ans = o; const ok = o === w; if (ok) s.score++; grade(w, ok); render();
+    } }, cfg.label(o)));
+  });
+  if (s.ans) {
+    const ok = s.ans === w;
+    card.append(el("div", { class: "fb" }, el("b", {}, ok ? "✅ 答對" : "❌ 正解：" + cfg.label(w)), ...cfg.after(w).filter(Boolean)));
+    card.append(el("div", { class: "row" }, el("button", { class: "btn", onclick: () => { s.i++; s.ans = null; render(); } }, "下一題")));
+  }
+  root.append(card);
+}
+
+// ===== 純英文 =====
+function viewEnglish(root) {
+  const bar = el("div", { class: "bar" });
+  [["card", "Flashcards"], ["def", "Definition → Word"], ["spell", "Spelling"]].forEach(([k, t]) =>
+    bar.append(el("button", { class: "chip" + (S.enMode === k ? " on" : ""), onclick: () => { S.enMode = k; save(); session = null; render(); } }, t)));
+  root.append(bar);
+  if (S.enMode === "card") return viewCard(root, { english: true, kind: "encard" });
+  if (S.enMode === "def") {
+    if (!session || session.kind !== "endef") {
+      const pool = levelPool((w) => w.d);
+      session = { kind: "endef", list: pickWords(pool, SESSION), i: 0, ans: null, score: 0 };
+      session.opts = session.list.map((w) => shuffle([w, ...distractors(pool, w, "w")]));
+    }
+    return mcq(root, {
+      prompt: (w) => el("div", {}, el("div", { class: "mute" }, "Which word matches this definition?"), el("div", { class: "def", style: "font-size:19px" }, w.d),
+        w.ex ? el("div", { class: "ex" }, "“" + blankOut(w.ex, w.w) + "”") : null),
+      label: (o) => o.w,
+      after: (w) => [w.ex ? el("div", { class: "ex" }, "“" + w.ex + "”", speakBtn(w.ex)) : null]
+    });
+  }
+  // 拼寫
+  if (!session || session.kind !== "spell") {
+    const pool = levelPool((w) => w.d && /^[a-zA-Z-]+$/.test(w.w));
+    session = { kind: "spell", list: pickWords(pool, SESSION), i: 0, ans: null, score: 0, hint: 0 };
+  }
+  const s = session;
+  if (s.i >= s.list.length) return root.append(doneCard(() => { session = null; render(); }, `Correct: ${s.score} / ${s.list.length}`));
+  const w = s.list[s.i];
+  root.append(...progressLine(s.i, s.list.length));
+  const hint = w.w.slice(0, s.hint) + "•".repeat(Math.max(0, w.w.length - s.hint));
+  const input = el("input", { type: "text", autocapitalize: "off", autocomplete: "off", autocorrect: "off", spellcheck: "false", placeholder: "Type the word", disabled: s.ans != null ? "" : false });
+  const check = () => {
+    if (s.ans != null) return;
+    const ok = input.value.trim().toLowerCase() === w.w.toLowerCase();
+    s.ans = input.value.trim(); if (ok) s.score++; grade(w, ok && s.hint === 0, ok && s.hint > 0); render();
+  };
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") check(); });
+  const card = el("div", { class: "card" },
+    el("div", { class: "mute" }, `Spell the word (${w.w.length} letters): ${hint}`),
+    el("div", { class: "def", style: "font-size:19px" }, w.d),
+    w.ex ? el("div", { class: "ex" }, "“" + blankOut(w.ex, w.w) + "”") : null,
+    el("div", { class: "row" }, el("button", { class: "btn gray", style: "flex:0 0 auto", onclick: () => speak(w.w) }, "🔊 Hear it")),
+    input);
+  if (s.ans == null) {
+    card.append(el("div", { class: "row" },
+      el("button", { class: "btn gray", onclick: () => { s.hint = Math.min(s.hint + 1, w.w.length - 1); render(); } }, "Hint"),
+      el("button", { class: "btn", onclick: check }, "Check")));
+    setTimeout(() => input.focus(), 50);
+  } else {
+    input.value = s.ans;
+    const ok = s.ans.toLowerCase() === w.w.toLowerCase();
+    card.append(el("div", { class: "fb" }, el("b", {}, ok ? "✅ Correct: " : "❌ Answer: "), el("span", { class: "word", style: "font-size:22px" }, w.w), speakBtn(w.w),
+      w.ex ? el("div", { class: "ex" }, "“" + w.ex + "”") : null));
+    card.append(el("div", { class: "row" }, el("button", { class: "btn", onclick: () => { s.i++; s.ans = null; s.hint = 0; render(); } }, "Next")));
+  }
+  root.append(card);
+}
+
+// ===== 生字本 =====
+// 分數沿用 word_remember 的規則：0 熟悉、1 不太熟、2 不熟、>2 很不熟；新加入的字從 2 開始。
+// s[0] 是聽寫分數，s[1] 是看中文寫英文分數。
+let KEYMAP = new Map();
+function buildKeymap() { KEYMAP = new Map(); BANK.concat(TRAVEL).forEach((w) => KEYMAP.set(key(w), w)); }
+function addUnf(w, quiet) {
+  const k = key(w);
+  if (!S.unf[k]) { S.unf[k] = [2, 2]; save(); if (!quiet) toast("已加入生字本：" + w.w); }
+  else if (!quiet) toast("已經在生字本裡");
+}
+function unfList(slot) { return Object.entries(S.unf).filter(([k, s]) => s[slot] > 0 && KEYMAP.has(k)).map(([k]) => KEYMAP.get(k)); }
+function hintOf(w) { return w.zh || w.d || ""; }
+
+// ===== 聽寫 =====
+function viewDictation(root) {
+  const bar = el("div", { class: "bar" });
+  const nU = unfList(0).length, nR = unfList(1).length;
+  [["new", "聽寫本級新字"], ["unf", `生字本聽寫（${nU}）`], ["rev", `看中文寫英文（${nR}）`], ["glance", "快速瀏覽"]].forEach(([k, t]) =>
+    bar.append(el("button", { class: "chip" + (S.dMode === k ? " on" : ""), onclick: () => { S.dMode = k; save(); session = null; speechSynthesis && speechSynthesis.cancel(); render(); } }, t)));
+  root.append(bar);
+  if (S.dMode === "glance") return viewGlance(root);
+
+  if (!session || session.kind !== "dict-" + S.dMode) {
+    let list;
+    if (S.dMode === "new") list = pickWords(levelPool((w) => hintOf(w) && /^[a-zA-Z' -]+$/.test(w.w)), SESSION);
+    else list = shuffle(unfList(S.dMode === "unf" ? 0 : 1)).slice(0, SESSION);
+    session = { kind: "dict-" + S.dMode, list, i: 0, tries: 0, done: false, score: 0, played: -1 };
+  }
+  const s = session, rev = S.dMode === "rev";
+  if (!s.list.length) return root.append(el("div", { class: "card" }, S.dMode === "new" ? "這一級沒有可以聽寫的字。" : "生字本目前沒有要練的字。先做「聽寫本級新字」，拼錯的字會自動放進來；也可以在單字卡按「加入生字本」。"));
+  if (s.i >= s.list.length) return root.append(doneCard(() => { session = null; render(); }, `一次拼對 ${s.score} / ${s.list.length}`));
+  const w = s.list[s.i];
+  root.append(el("div", { class: "mute" }, `第 ${s.i + 1} / ${s.list.length} 題・${rev ? "看提示拼出英文" : "聽發音拼出單字"}・最多 3 次機會`),
+    el("div", { class: "prog" }, el("i", { style: `width:${(s.i / s.list.length) * 100}%` })));
+  if (!rev && s.played !== s.i) { s.played = s.i; setTimeout(() => speak(w.w), 250); }
+
+  const input = el("input", { type: "text", autocapitalize: "off", autocomplete: "off", autocorrect: "off", spellcheck: "false", placeholder: "輸入單字後按 Enter", disabled: s.done ? "" : false });
+  const submit = () => {
+    if (s.done) return;
+    const v = input.value.trim();
+    if (!v) return;
+    if (v.toLowerCase() === w.w.toLowerCase()) finish(true);
+    else {
+      s.tries++; s.last = v;
+      if (s.tries > 2) finish(false);
+      else { s.last = v; speak(w.w); render(); }
+    }
+  };
+  const finish = (ok) => {
+    s.done = true; s.ok = ok;
+    const k = s.tries; // 拼錯的次數
+    if (ok && k === 0) s.score++;
+    if (S.dMode === "new") {
+      grade(w, ok && k === 0, ok && k > 0);
+      if (k > 0) addUnf(w, true);
+    } else {
+      const slot = rev ? 1 : 0, sc = S.unf[key(w)];
+      if (sc) { if (k >= 2) sc[slot]++; else sc[slot] = Math.max(0, sc[slot] - 1); }
+      logHist(w.lv, ok && k === 0); save();
+    }
+    render();
+  };
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+
+  const card = el("div", { class: "card" });
+  if (rev) card.append(el("div", { class: "zh" }, hintOf(w)), el("div", { class: "mute", style: "margin-top:6px" }, `${w.w.length} 個字母`));
+  else card.append(el("div", { class: "row", style: "margin-top:0" }, el("button", { class: "btn gray", onclick: () => speak(w.w) }, "🔊 再聽一次")));
+  if (s.tries > 0 && !s.done) {
+    card.append(el("div", { class: "fb" }, el("b", {}, `❌ 「${s.last}」不對，還有 ${3 - s.tries} 次機會`),
+      !rev ? el("div", { class: "zh", style: "font-size:17px" }, "提示：" + hintOf(w)) : null,
+      rev ? el("div", { class: "mute" }, "開頭：" + w.w.slice(0, s.tries)) : null));
+  }
+  card.append(input);
+  if (!s.done) {
+    card.append(el("div", { class: "row" }, el("button", { class: "btn gray", onclick: () => { s.tries = 3; finish(false); } }, "不會，看答案"), el("button", { class: "btn", onclick: submit }, "送出")));
+    setTimeout(() => input.focus(), 50);
+  } else {
+    input.value = s.ok ? w.w : (s.last || "");
+    const sc = S.unf[key(w)];
+    card.append(el("div", { class: "fb" },
+      el("b", {}, s.ok ? (s.tries === 0 ? "✅ 一次拼對　" : `✅ 第 ${s.tries + 1} 次拼對　`) : "❌ 答案　"),
+      el("span", { class: "word", style: "font-size:24px" }, w.w), speakBtn(w.w), w.p ? el("span", { class: "pos" }, w.p) : null,
+      w.zh ? el("div", { class: "zh", style: "font-size:17px" }, w.zh) : null,
+      w.d ? el("div", {}, "📖 " + w.d) : null,
+      w.ex ? el("div", { class: "ex" }, "“" + w.ex + "”") : null,
+      sc ? el("div", { class: "mute", style: "margin-top:6px" }, `生字本熟悉度：聽寫 ${sc[0]}・中翻英 ${sc[1]}（0 代表已熟）`) : null));
+    card.append(el("div", { class: "row" }, el("button", { class: "btn", onclick: () => { s.i++; s.tries = 0; s.done = false; s.last = ""; render(); } }, "下一題")));
+  }
+  root.append(card);
+}
+
+// 快速瀏覽：依字表順序一次看 30 個，可以自動逐字念出（每個字間隔 1 秒）
+function viewGlance(root) {
+  const pool = BANK.filter((w) => w.lv === S.lv);
+  const start = Math.min(S.glance[S.lv] || 0, Math.max(0, pool.length - 1));
+  const page = pool.slice(start, start + 30);
+  const list = el("div", { class: "card" });
+  page.forEach((w, i) => list.append(el("div", { id: "g" + i, style: "display:flex;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line)" },
+    el("b", { style: "min-width:38%;word-break:break-word" }, w.w), speakBtn(w.w),
+    el("span", { style: "flex:1" }, w.zh || w.d),
+    el("button", { class: "speak", title: "加入生字本", style: "font-size:16px", onclick: () => addUnf(w) }, "＋"))));
+  let playing = false;
+  const playBtn = el("button", { class: "btn", onclick: async () => {
+    if (playing) { playing = false; speechSynthesis.cancel(); playBtn.textContent = "▶ 自動念出"; return; }
+    playing = true; playBtn.textContent = "■ 停止";
+    for (let i = 0; i < page.length && playing; i++) {
+      const row = document.getElementById("g" + i); if (!row) break;
+      row.style.background = "#eff6ff"; row.scrollIntoView({ block: "center", behavior: "smooth" });
+      await new Promise((res) => { const u = new SpeechSynthesisUtterance(page[i].w); u.lang = "en-US"; u.rate = 0.9; u.onend = res; u.onerror = res; speechSynthesis.speak(u); });
+      await new Promise((res) => setTimeout(res, 1000));
+      row.style.background = "";
+    }
+    playing = false; playBtn.textContent = "▶ 自動念出";
+  } }, "▶ 自動念出");
+  const move = (d) => { S.glance[S.lv] = Math.max(0, Math.min(pool.length - 1, start + d)); save(); speechSynthesis.cancel(); render(); window.scrollTo(0, 0); };
+  root.append(el("div", { class: "mute" }, `${LEVELS[S.lv - 1].name}・第 ${start + 1}–${start + page.length} 個，共 ${pool.length} 個・按「＋」把不熟的字加進生字本`),
+    el("div", { class: "row", style: "margin-bottom:12px" }, el("button", { class: "btn gray", onclick: () => move(-30) }, "◀ 上一頁"), playBtn, el("button", { class: "btn gray", onclick: () => move(30) }, "下一頁 ▶")),
+    list);
+}
+
+// ===== 文法 =====
+function viewGrammar(root) {
+  if (!session || session.kind !== "gram") {
+    const pool = GRAMMAR.filter((g) => g.lv === S.lv);
+    const wrongFirst = pool.filter((g) => (S.gram[g.q] || {}).w > 0);
+    session = { kind: "gram", list: shuffle(wrongFirst).concat(shuffle(pool.filter((g) => !wrongFirst.includes(g)))).slice(0, SESSION), i: 0, ans: null, score: 0 };
+  }
+  const s = session;
+  if (!s.list.length) return root.append(el("div", { class: "card" }, "這個等級暫時沒有文法題。"));
+  if (s.i >= s.list.length) return root.append(doneCard(() => { session = null; render(); }, `答對 ${s.score} / ${s.list.length}`));
+  const g = s.list[s.i];
+  root.append(...progressLine(s.i, s.list.length));
+  const card = el("div", { class: "card" }, el("div", { class: "mute" }, "【" + g.tag + "】"), el("div", { class: "def", style: "font-size:19px" }, g.q));
+  g.o.forEach((o, idx) => {
+    let cls = "opt";
+    if (s.ans != null) { if (idx === g.a) cls += " right"; else if (idx === s.ans) cls += " wrong"; }
+    card.append(el("button", { class: cls, disabled: s.ans != null ? "" : false, onclick: () => {
+      s.ans = idx; const ok = idx === g.a; if (ok) s.score++;
+      const r = (S.gram[g.q] = S.gram[g.q] || { r: 0, w: 0 }); ok ? r.r++ : r.w++;
+      const t = (S.tags[g.tag] = S.tags[g.tag] || { r: 0, w: 0 }); ok ? t.r++ : t.w++;
+      logHist(g.lv, ok); save(); render();
+    } }, String.fromCharCode(65 + idx) + ". " + o));
+  });
+  if (s.ans != null) {
+    card.append(el("div", { class: "fb" }, el("b", {}, s.ans === g.a ? "✅ 答對　" : "❌ 正解 " + String.fromCharCode(65 + g.a) + "　"), g.e));
+    card.append(el("div", { class: "row" }, el("button", { class: "btn", onclick: () => { s.i++; s.ans = null; render(); } }, "下一題")));
+  }
+  root.append(card);
+}
+
+// ===== 旅行 =====
+function travelPool() { return TRAVEL.filter((w) => S.tTopic === "全部" || w.t === S.tTopic); }
+function viewTravel(root) {
+  const topics = ["全部", ...new Set(TRAVEL.map((w) => w.t))];
+  const bar = el("div", { class: "bar" });
+  topics.forEach((t) => bar.append(el("button", { class: "chip" + (S.tTopic === t ? " on" : ""), onclick: () => { S.tTopic = t; save(); session = null; render(); } }, t)));
+  root.append(bar);
+  viewCard(root, { travel: true, kind: "travel" });
+  root.append(aiPanel());
+}
+
+// ===== AI 產生旅行單字（保留原功能，修好）=====
+function aiPanel() {
+  const box = el("details", { class: "card" }, el("summary", {}, "🤖 用 AI 產生更多旅行單字（存回 GitHub）"));
+  const gh = el("input", { type: "password", placeholder: "GitHub Token（ghp_ 開頭）", value: S.ai.gh || "" });
+  const key = el("input", { type: "password", placeholder: "Google AI Studio API Key（AIza 開頭）", value: S.ai.key || "" });
+  const model = el("input", { type: "text", placeholder: "模型", value: S.ai.model || "gemini-2.5-flash" });
+  const remember = el("input", { type: "checkbox", checked: S.ai.gh ? "" : false });
+  const st = el("div", { class: "mute", style: "margin-top:8px" });
+  box.append(gh, key, model,
+    el("label", { class: "sw", style: "margin-top:8px" }, remember, "記住金鑰（只存在這台裝置）"),
+    el("div", { class: "row" }, el("button", { class: "btn", onclick: async () => {
+      if (!gh.value.trim() || !key.value.trim()) return toast("請填 GitHub Token 和 API Key");
+      S.ai = remember.checked ? { gh: gh.value.trim(), key: key.value.trim(), model: model.value.trim() } : { model: model.value.trim() }; save();
+      try { st.textContent = "⏳ 產生中…"; const n = await generateTravel(gh.value.trim(), key.value.trim(), model.value.trim() || "gemini-2.5-flash"); st.textContent = `✅ 新增 ${n} 個單字，已存回 words.json`; session = null; render(); toast(`新增 ${n} 個旅行單字`); }
+      catch (e) { st.textContent = "❌ " + e.message; }
+    } }, "產生 5 個新單字")), st);
+  return box;
+}
+async function generateTravel(ghToken, aiKey, model) {
+  const url = `https://api.github.com/repos/${REPO.USER}/${REPO.REPO}/contents/words.json`;
+  const res = await fetch(url, { headers: { Authorization: "token " + ghToken } });
+  if (!res.ok) throw new Error("GitHub 讀取失敗（" + res.status + "），請確認 Token 權限有 contents: write");
+  const gd = await res.json();
+  const list = JSON.parse(decodeURIComponent(escape(atob(gd.content.replace(/\s/g, "")))) || "[]");
+  const have = new Set(TRAVEL.map((w) => w.w.toLowerCase()));
+  const prompt = "Give 5 useful English words or short phrases for international travellers (airport, hotel, driving, restaurant, sightseeing). " +
+    "Do NOT use any of these: " + [...have].slice(-150).join(", ") + ". " +
+    'Reply ONLY with a JSON array: [{"w":"word","zh":"繁體中文意思","d":"simple English definition","ex":"example sentence","t":"機場|住宿|交通|餐廳|購物|觀光|緊急|問路"}]';
+  const ai = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(aiKey)}`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } })
+  });
+  if (!ai.ok) throw new Error("AI 呼叫失敗（" + ai.status + "）" + (ai.status === 404 ? "：模型名稱可能已更換" : ""));
+  const data = await ai.json();
+  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  const m = raw.match(/\[[\s\S]*\]/);
+  if (!m) throw new Error("AI 回傳格式錯誤");
+  const news = JSON.parse(m[0]).filter((w) => w && w.w && !have.has(String(w.w).toLowerCase()))
+    .map((w) => ({ w: String(w.w), zh: String(w.zh || ""), d: String(w.d || ""), ex: String(w.ex || ""), t: String(w.t || "AI") }));
+  if (!news.length) throw new Error("AI 沒有給出新的單字，再試一次");
+  const merged = list.concat(news);
+  const put = await fetch(url, { method: "PUT", headers: { Authorization: "token " + ghToken, "Content-Type": "application/json" },
+    body: JSON.stringify({ message: "Add " + news.length + " AI travel words", content: btoa(unescape(encodeURIComponent(JSON.stringify(merged, null, 1)))), sha: gd.sha }) });
+  if (!put.ok) throw new Error("存回 GitHub 失敗（" + put.status + "）");
+  news.forEach((w) => TRAVEL.push(Object.assign({ lv: 0 }, w)));
+  buildKeymap();
+  return news.length;
+}
+
+// ===== 進度 =====
+function viewMe(root) {
+  const t = el("table", {}, el("tr", {}, el("th", {}, "等級"), el("th", {}, "字數"), el("th", {}, "學過"), el("th", {}, "熟記"), el("th", {}, "近期正確率")));
+  LEVELS.forEach((L) => {
+    const ws = BANK.filter((w) => w.lv === L.id);
+    let seen = 0, known = 0;
+    ws.forEach((w) => { const r = S.words[key(w)]; if (r) { seen++; if (r.b >= 3) known++; } });
+    const h = S.hist[L.id] || [];
+    t.append(el("tr", {}, el("td", {}, (S.lv === L.id ? "▶ " : "") + L.name), el("td", {}, ws.length), el("td", {}, seen), el("td", {}, known), el("td", {}, h.length ? Math.round(rate(L.id) * 100) + "%" : "—")));
+  });
+  root.append(el("div", { class: "card" }, el("b", {}, "各級進度"), t,
+    el("div", { class: "mute", style: "margin-top:8px" }, `開啟「漸進自動升級」時，同一級最近 ${PASS_WINDOW} 題正確率達 ${PASS_RATE * 100}% 就會升到下一級。「熟記」是連續答對 3 次以上的字。`)));
+  const tags = Object.entries(S.tags).map(([k, v]) => [k, v, v.r / (v.r + v.w)]).sort((a, b) => a[2] - b[2]);
+  const tt = el("table", {}, el("tr", {}, el("th", {}, "文法主題"), el("th", {}, "對／錯"), el("th", {}, "正確率")));
+  tags.forEach(([k, v, r]) => tt.append(el("tr", {}, el("td", {}, k), el("td", {}, v.r + "／" + v.w), el("td", { style: r < 0.6 ? "color:var(--bad)" : "" }, Math.round(r * 100) + "%"))));
+  root.append(el("div", { class: "card" }, el("b", {}, "文法弱點（正確率由低到高）"), tags.length ? tt : el("div", { class: "mute" }, "還沒做過文法題。")));
+  const unf = Object.entries(S.unf).filter(([k]) => KEYMAP.has(k)).map(([k, sc]) => [KEYMAP.get(k), sc]).sort((a, b) => (b[1][0] + b[1][1]) - (a[1][0] + a[1][1]));
+  const ut = el("table", {}, el("tr", {}, el("th", {}, "單字"), el("th", {}, "意思"), el("th", {}, "聽寫"), el("th", {}, "中翻英"), el("th", {})));
+  unf.slice(0, 200).forEach(([w, sc]) => ut.append(el("tr", {}, el("td", {}, w.w), el("td", {}, (w.zh || w.d || "").slice(0, 16)),
+    el("td", {}, sc[0]), el("td", {}, sc[1]), el("td", {}, el("button", { class: "speak", style: "font-size:15px", title: "移除", onclick: () => { delete S.unf[key(w)]; save(); render(); } }, "✕")))));
+  root.append(el("div", { class: "card" }, el("b", {}, `生字本（${unf.length} 個，${unf.filter(([, sc]) => sc[0] + sc[1] === 0).length} 個已熟）`),
+    el("div", { class: "mute", style: "margin:4px 0 6px" }, "分數 0 熟悉、1 不太熟、2 不熟、3 以上很不熟。聽寫拼錯兩次以上加 1，兩次內拼對減 1。"),
+    unf.length ? ut : el("div", { class: "mute" }, "還沒有生字。")));
+  const tr = TRAVEL.filter((w) => (S.words[key(w)] || {}).b >= 3).length;
+  root.append(el("div", { class: "card" }, el("b", {}, "旅行單字"), el("div", {}, `共 ${TRAVEL.length} 個，熟記 ${tr} 個`)));
+  root.append(el("div", { class: "card" }, el("b", {}, "備份與重設"),
+    el("div", { class: "row" },
+      el("button", { class: "btn gray", onclick: () => { const b = new Blob([JSON.stringify(Object.assign({}, S, { ai: {} }))], { type: "application/json" }); const a = el("a", { href: URL.createObjectURL(b), download: "eng-progress.json" }); a.click(); } }, "匯出進度"),
+      el("button", { class: "btn gray", onclick: () => { const f = el("input", { type: "file", accept: ".json" }); f.onchange = async () => { try { const d = JSON.parse(await f.files[0].text()); S = Object.assign(load(), d, { ai: S.ai }); save(); toast("已匯入"); render(); } catch (e) { toast("檔案格式錯誤"); } }; f.click(); } }, "匯入進度"),
+      el("button", { class: "btn red", onclick: () => { if (confirm("確定清除所有學習紀錄？")) { S = Object.assign(load(), { words: {}, hist: {}, gram: {}, tags: {}, lv: 1 }); save(); render(); } } }, "重設")),
+    el("div", { class: "mute", style: "margin-top:8px" }, "用 Google 登入時，進度會和登機證存在同一個帳號，換裝置自動同步。沒登入時只存在這台裝置，可以用匯出／匯入搬移。")));
+  root.append(el("div", { class: "card mute" }, el("b", {}, "資料來源"),
+    el("div", {}, "英檢初級／中級／中高級：語言訓練測驗中心「全民英檢參考字表」（113 年修訂版）。"),
+    el("div", {}, "多益：TOEIC Service List 1.2，托福學術：New Academic Word List 1.2，皆由 Browne、Culligan、Phillips 編製，CC BY-SA 4.0 授權（newgeneralservicelist.com）。"),
+    el("div", {}, "英英解釋與例句：Princeton WordNet 3.0。文法題與旅行單字為自編內容。")));
+}
+
+// ===== 主畫面 =====
+function render() {
+  const nav = $("#tabs"); nav.innerHTML = "";
+  TABS.forEach(([k, t]) => nav.append(el("button", { class: tab === k ? "on" : "", onclick: () => { if (tab !== k) { tab = k; session = null; render(); window.scrollTo(0, 0); } } }, t)));
+  const root = $("#app"); root.innerHTML = "";
+  if (["card", "quiz", "en", "dict", "gram"].includes(tab)) root.append(levelBar());
+  ({ card: viewCard, quiz: viewQuiz, en: viewEnglish, dict: viewDictation, gram: viewGrammar, travel: viewTravel, me: viewMe })[tab](root);
+}
+
+(async function init() {
+  try {
+    const [b, t, g, ai] = await Promise.all([
+      fetch("bank.json").then((r) => r.json()),
+      fetch("travel.json").then((r) => r.json()),
+      fetch("grammar.json").then((r) => r.json()),
+      fetch("words.json", { cache: "no-store" }).then((r) => r.ok ? r.json() : []).catch(() => [])
+    ]);
+    BANK = b; GRAMMAR = g;
+    TRAVEL = t.map((w) => Object.assign({ lv: 0 }, w));
+    const have = new Set(TRAVEL.map((w) => w.w.toLowerCase()));
+    (Array.isArray(ai) ? ai : []).forEach((w) => { if (w && w.w && !have.has(String(w.w).toLowerCase())) { TRAVEL.push({ lv: 0, w: w.w, zh: w.zh || w.trans || "", d: w.d || w.def || "", ex: w.ex || "", t: w.t || "AI" }); have.add(String(w.w).toLowerCase()); } });
+    buildKeymap();
+    await new Promise((res) => { let first = true; onAuthStateChanged(auth, async (u) => {
+      user = u; if (u) await pullCloud(); drawWho();
+      if (first) { first = false; res(); } else { session = null; render(); }
+    }); });
+    render();
+  } catch (e) {
+    $("#app").innerHTML = "";
+    $("#app").append(el("div", { class: "card" }, "❌ 題庫載入失敗：" + e.message));
+  }
+})();
+</script>
+</body>
+</html>
