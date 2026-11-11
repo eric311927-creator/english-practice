@@ -65,7 +65,6 @@ const auth = getAuth(fbApp), db = getFirestore(fbApp);
 let user = null, cloudTimer = null, cloudErr = "";
 
 // ===== 設定 =====
-const REPO = { USER: "eric311927-creator", REPO: "english-practice" };
 const LEVELS = [
   { id: 1, name: "英檢初級", desc: "GEPT 初級・CEFR A2" },
   { id: 2, name: "英檢中級", desc: "GEPT 中級・CEFR B1" },
@@ -74,7 +73,7 @@ const LEVELS = [
   { id: 5, name: "托福學術", desc: "New Academic Word List" }
 ];
 const TABS = [
-  ["card", "單字卡"], ["quiz", "測驗"], ["en", "純英文"], ["dict", "聽寫"], ["gram", "文法"], ["travel", "旅行"], ["me", "進度"]
+  ["card", "單字卡"], ["quiz", "測驗"], ["en", "純英文"], ["dict", "聽寫"], ["gram", "文法"], ["me", "進度"]
 ];
 const SESSION = 10;          // 每回合題數
 const PASS_RATE = 0.8;       // 升級門檻
@@ -82,7 +81,7 @@ const PASS_WINDOW = 30;      // 最近幾題計算正確率
 const BOX_DAYS = [0, 1, 2, 4, 8, 16, 32]; // 間隔複習天數
 
 // ===== 狀態 =====
-let BANK = [], TRAVEL = [], GRAMMAR = [];
+let BANK = [], GRAMMAR = [];
 let S = load();
 let tab = "card";
 let session = null;
@@ -90,8 +89,8 @@ let session = null;
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem("engapp") || "{}");
-    return Object.assign({ lv: 1, auto: true, words: {}, hist: {}, gram: {}, tags: {}, dir: "en2zh", enMode: "card", dMode: "new", tTopic: "全部", ai: {}, unf: {}, glance: {} }, s);
-  } catch (e) { return { lv: 1, auto: true, words: {}, hist: {}, gram: {}, tags: {}, dir: "en2zh", enMode: "card", dMode: "new", tTopic: "全部", ai: {}, unf: {}, glance: {} }; }
+    return Object.assign({ lv: 1, auto: true, words: {}, hist: {}, gram: {}, tags: {}, dir: "en2zh", enMode: "card", dMode: "new", unf: {}, glance: {} }, s);
+  } catch (e) { return { lv: 1, auto: true, words: {}, hist: {}, gram: {}, tags: {}, dir: "en2zh", enMode: "card", dMode: "new", unf: {}, glance: {} }; }
 }
 function save() {
   S.ts = Date.now();
@@ -223,17 +222,15 @@ function doneCard(again, extra) {
 // ===== 單字卡（中英）=====
 function viewCard(root, opts = {}) {
   const english = !!opts.english;
-  const travel = !!opts.travel;
   if (!session || session.kind !== (opts.kind || "card")) {
-    const pool = travel ? travelPool() : levelPool((w) => english ? w.d : w.zh);
+    const pool = levelPool((w) => english ? w.d : w.zh);
     session = { kind: opts.kind || "card", list: pickWords(pool, SESSION), i: 0, flip: false };
   }
   const s = session;
   if (!s.list.length) return root.append(el("div", { class: "card" }, "這個分類沒有單字。"));
   if (s.i >= s.list.length) return root.append(doneCard(() => { session = null; render(); }));
   const w = s.list[s.i];
-  if (!travel) root.append(...progressLine(s.i, s.list.length));
-  else root.append(el("div", { class: "mute" }, `第 ${s.i + 1} / ${s.list.length} 張・${w.t || ""}`));
+  root.append(...progressLine(s.i, s.list.length));
   const card = el("div", { class: "card", style: "cursor:pointer;min-height:220px", onclick: () => { s.flip = true; render(); } },
     el("div", {}, el("span", { class: "word" }, w.w), speakBtn(w.w), w.p ? el("span", { class: "pos" }, w.p) : null));
   if (!s.flip) card.append(el("div", { class: "mute", style: "margin-top:40px" }, english ? "先在心裡用英文說出意思，再點一下看解釋" : "先想想中文意思，點一下翻面"));
@@ -355,7 +352,7 @@ function viewEnglish(root) {
 // 分數沿用 word_remember 的規則：0 熟悉、1 不太熟、2 不熟、>2 很不熟；新加入的字從 2 開始。
 // s[0] 是聽寫分數，s[1] 是看中文寫英文分數。
 let KEYMAP = new Map();
-function buildKeymap() { KEYMAP = new Map(); BANK.concat(TRAVEL).forEach((w) => KEYMAP.set(key(w), w)); }
+function buildKeymap() { KEYMAP = new Map(); BANK.forEach((w) => KEYMAP.set(key(w), w)); }
 function addUnf(w, quiet) {
   const k = key(w);
   if (!S.unf[k]) { S.unf[k] = [2, 2]; save(); if (!quiet) toast("已加入生字本：" + w.w); }
@@ -501,66 +498,6 @@ function viewGrammar(root) {
   root.append(card);
 }
 
-// ===== 旅行 =====
-function travelPool() { return TRAVEL.filter((w) => S.tTopic === "全部" || w.t === S.tTopic); }
-function viewTravel(root) {
-  const topics = ["全部", ...new Set(TRAVEL.map((w) => w.t))];
-  const bar = el("div", { class: "bar" });
-  topics.forEach((t) => bar.append(el("button", { class: "chip" + (S.tTopic === t ? " on" : ""), onclick: () => { S.tTopic = t; save(); session = null; render(); } }, t)));
-  root.append(bar);
-  viewCard(root, { travel: true, kind: "travel" });
-  root.append(aiPanel());
-}
-
-// ===== AI 產生旅行單字（保留原功能，修好）=====
-function aiPanel() {
-  const box = el("details", { class: "card" }, el("summary", {}, "🤖 用 AI 產生更多旅行單字（存回 GitHub）"));
-  const gh = el("input", { type: "password", placeholder: "GitHub Token（ghp_ 開頭）", value: S.ai.gh || "" });
-  const key = el("input", { type: "password", placeholder: "Google AI Studio API Key（AIza 開頭）", value: S.ai.key || "" });
-  const model = el("input", { type: "text", placeholder: "模型", value: S.ai.model || "gemini-2.5-flash" });
-  const remember = el("input", { type: "checkbox", checked: S.ai.gh ? "" : false });
-  const st = el("div", { class: "mute", style: "margin-top:8px" });
-  box.append(gh, key, model,
-    el("label", { class: "sw", style: "margin-top:8px" }, remember, "記住金鑰（只存在這台裝置）"),
-    el("div", { class: "row" }, el("button", { class: "btn", onclick: async () => {
-      if (!gh.value.trim() || !key.value.trim()) return toast("請填 GitHub Token 和 API Key");
-      S.ai = remember.checked ? { gh: gh.value.trim(), key: key.value.trim(), model: model.value.trim() } : { model: model.value.trim() }; save();
-      try { st.textContent = "⏳ 產生中…"; const n = await generateTravel(gh.value.trim(), key.value.trim(), model.value.trim() || "gemini-2.5-flash"); st.textContent = `✅ 新增 ${n} 個單字，已存回 words.json`; session = null; render(); toast(`新增 ${n} 個旅行單字`); }
-      catch (e) { st.textContent = "❌ " + e.message; }
-    } }, "產生 5 個新單字")), st);
-  return box;
-}
-async function generateTravel(ghToken, aiKey, model) {
-  const url = `https://api.github.com/repos/${REPO.USER}/${REPO.REPO}/contents/words.json`;
-  const res = await fetch(url, { headers: { Authorization: "token " + ghToken } });
-  if (!res.ok) throw new Error("GitHub 讀取失敗（" + res.status + "），請確認 Token 權限有 contents: write");
-  const gd = await res.json();
-  const list = JSON.parse(decodeURIComponent(escape(atob(gd.content.replace(/\s/g, "")))) || "[]");
-  const have = new Set(TRAVEL.map((w) => w.w.toLowerCase()));
-  const prompt = "Give 5 useful English words or short phrases for international travellers (airport, hotel, driving, restaurant, sightseeing). " +
-    "Do NOT use any of these: " + [...have].slice(-150).join(", ") + ". " +
-    'Reply ONLY with a JSON array: [{"w":"word","zh":"繁體中文意思","d":"simple English definition","ex":"example sentence","t":"機場|住宿|交通|餐廳|購物|觀光|緊急|問路"}]';
-  const ai = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(aiKey)}`, {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } })
-  });
-  if (!ai.ok) throw new Error("AI 呼叫失敗（" + ai.status + "）" + (ai.status === 404 ? "：模型名稱可能已更換" : ""));
-  const data = await ai.json();
-  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  const m = raw.match(/\[[\s\S]*\]/);
-  if (!m) throw new Error("AI 回傳格式錯誤");
-  const news = JSON.parse(m[0]).filter((w) => w && w.w && !have.has(String(w.w).toLowerCase()))
-    .map((w) => ({ w: String(w.w), zh: String(w.zh || ""), d: String(w.d || ""), ex: String(w.ex || ""), t: String(w.t || "AI") }));
-  if (!news.length) throw new Error("AI 沒有給出新的單字，再試一次");
-  const merged = list.concat(news);
-  const put = await fetch(url, { method: "PUT", headers: { Authorization: "token " + ghToken, "Content-Type": "application/json" },
-    body: JSON.stringify({ message: "Add " + news.length + " AI travel words", content: btoa(unescape(encodeURIComponent(JSON.stringify(merged, null, 1)))), sha: gd.sha }) });
-  if (!put.ok) throw new Error("存回 GitHub 失敗（" + put.status + "）");
-  news.forEach((w) => TRAVEL.push(Object.assign({ lv: 0 }, w)));
-  buildKeymap();
-  return news.length;
-}
-
 // ===== 進度 =====
 function viewMe(root) {
   const t = el("table", {}, el("tr", {}, el("th", {}, "等級"), el("th", {}, "字數"), el("th", {}, "學過"), el("th", {}, "熟記"), el("th", {}, "近期正確率")));
@@ -584,8 +521,6 @@ function viewMe(root) {
   root.append(el("div", { class: "card" }, el("b", {}, `生字本（${unf.length} 個，${unf.filter(([, sc]) => sc[0] + sc[1] === 0).length} 個已熟）`),
     el("div", { class: "mute", style: "margin:4px 0 6px" }, "分數 0 熟悉、1 不太熟、2 不熟、3 以上很不熟。聽寫拼錯兩次以上加 1，兩次內拼對減 1。"),
     unf.length ? ut : el("div", { class: "mute" }, "還沒有生字。")));
-  const tr = TRAVEL.filter((w) => (S.words[key(w)] || {}).b >= 3).length;
-  root.append(el("div", { class: "card" }, el("b", {}, "旅行單字"), el("div", {}, `共 ${TRAVEL.length} 個，熟記 ${tr} 個`)));
   root.append(el("div", { class: "card" }, el("b", {}, "備份與重設"),
     el("div", { class: "row" },
       el("button", { class: "btn gray", onclick: () => { const b = new Blob([JSON.stringify(Object.assign({}, S, { ai: {} }))], { type: "application/json" }); const a = el("a", { href: URL.createObjectURL(b), download: "eng-progress.json" }); a.click(); } }, "匯出進度"),
@@ -595,7 +530,7 @@ function viewMe(root) {
   root.append(el("div", { class: "card mute" }, el("b", {}, "資料來源"),
     el("div", {}, "英檢初級／中級／中高級：語言訓練測驗中心「全民英檢參考字表」（113 年修訂版）。"),
     el("div", {}, "多益：TOEIC Service List 1.2，托福學術：New Academic Word List 1.2，皆由 Browne、Culligan、Phillips 編製，CC BY-SA 4.0 授權（newgeneralservicelist.com）。"),
-    el("div", {}, "英英解釋與例句：Princeton WordNet 3.0。文法題與旅行單字為自編內容。")));
+    el("div", {}, "英英解釋與例句：Princeton WordNet 3.0。文法題為自編內容。")));
 }
 
 // ===== 主畫面 =====
@@ -604,21 +539,16 @@ function render() {
   TABS.forEach(([k, t]) => nav.append(el("button", { class: tab === k ? "on" : "", onclick: () => { if (tab !== k) { tab = k; session = null; render(); window.scrollTo(0, 0); } } }, t)));
   const root = $("#app"); root.innerHTML = "";
   if (["card", "quiz", "en", "dict", "gram"].includes(tab)) root.append(levelBar());
-  ({ card: viewCard, quiz: viewQuiz, en: viewEnglish, dict: viewDictation, gram: viewGrammar, travel: viewTravel, me: viewMe })[tab](root);
+  ({ card: viewCard, quiz: viewQuiz, en: viewEnglish, dict: viewDictation, gram: viewGrammar, me: viewMe })[tab](root);
 }
 
 (async function init() {
   try {
-    const [b, t, g, ai] = await Promise.all([
+    const [b, g] = await Promise.all([
       fetch("bank.json").then((r) => r.json()),
-      fetch("travel.json").then((r) => r.json()),
-      fetch("grammar.json").then((r) => r.json()),
-      fetch("words.json", { cache: "no-store" }).then((r) => r.ok ? r.json() : []).catch(() => [])
+      fetch("grammar.json").then((r) => r.json())
     ]);
     BANK = b; GRAMMAR = g;
-    TRAVEL = t.map((w) => Object.assign({ lv: 0 }, w));
-    const have = new Set(TRAVEL.map((w) => w.w.toLowerCase()));
-    (Array.isArray(ai) ? ai : []).forEach((w) => { if (w && w.w && !have.has(String(w.w).toLowerCase())) { TRAVEL.push({ lv: 0, w: w.w, zh: w.zh || w.trans || "", d: w.d || w.def || "", ex: w.ex || "", t: w.t || "AI" }); have.add(String(w.w).toLowerCase()); } });
     buildKeymap();
     await new Promise((res) => { let first = true; onAuthStateChanged(auth, async (u) => {
       user = u; if (u) await pullCloud(); drawWho();
