@@ -4,57 +4,87 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>單字・聽寫｜英語練習登機證</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f5f6f8;--card:#fff;--ink:#1f2937;--mute:#6b7280;--line:#e5e7eb;--pri:#2563eb;--ok:#059669;--bad:#dc2626;--warn:#d97706}
+:root{--ink:#16243C;--ink-deep:#0F1B2D;--paper:#F7F1E1;--paper-dim:#EFE7D2;--gold:#D9A441;--gold-deep:#B8862F;--coral:#C0573E;--teal:#2F6F62;--slate:#46566B;--text:#23262B;--muted:#7A7264;--muted-ink:rgba(247,241,225,.62);--line:rgba(35,38,43,.12);
+--mute:var(--muted);--ok:var(--teal);--bad:var(--coral);--pri:var(--ink)}
 *{box-sizing:border-box}
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif;background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transparent}
-header{position:sticky;top:0;z-index:5;background:#16243C;color:#F7F1E1;padding:10px 12px 0}
-.top{display:flex;align-items:center;gap:10px;margin-bottom:6px}.top a{color:#D9A441;text-decoration:none;font-size:14px;white-space:nowrap}.top h1{white-space:nowrap}.who{margin-left:auto;font-size:12px;color:rgba(247,241,225,.7);display:flex;gap:8px;align-items:center}.who button{border:1px solid #D9A441;background:none;color:#D9A441;border-radius:8px;padding:4px 8px;font-size:12px;cursor:pointer}
-h1{font-size:18px;margin:0}
-.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
-.tabs button{flex:0 0 auto;border:0;background:none;padding:9px 12px;font-size:15px;color:rgba(247,241,225,.65);border-bottom:3px solid transparent;cursor:pointer}
-.tabs button.on{color:#F7F1E1;border-color:#D9A441;font-weight:600}
-main{max-width:640px;margin:0 auto;padding:14px 12px 80px}
-.bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center}
-.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-size:14px;cursor:pointer}
-.chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
-.chip.lock{opacity:.45}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:12px}
-.word{font-size:30px;font-weight:700;letter-spacing:.3px;word-break:break-word}
-.pos{color:var(--mute);font-size:14px;margin-left:6px}
-.zh{font-size:20px;margin-top:10px}
-.def{font-size:17px;margin-top:10px;line-height:1.5}
-.ex{font-style:italic;color:#374151;margin-top:8px;line-height:1.5}
-.mute{color:var(--mute);font-size:14px}
-.row{display:flex;gap:8px;margin-top:14px}
-.btn{flex:1;border:0;border-radius:10px;padding:13px 10px;font-size:16px;cursor:pointer;background:var(--pri);color:#fff}
-.btn.gray{background:#e5e7eb;color:var(--ink)}
-.btn.red{background:var(--bad)}.btn.amber{background:var(--warn)}.btn.green{background:var(--ok)}
-.opt{display:block;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:10px;padding:13px 14px;font-size:16px;margin-top:8px;cursor:pointer;line-height:1.4}
-.opt:disabled{color:var(--ink);opacity:1;cursor:default}
-.opt.right{border-color:var(--ok);background:#ecfdf5}.opt.wrong{border-color:var(--bad);background:#fef2f2}
-.fb{margin-top:12px;padding:12px;border-radius:10px;background:#f3f4f6;line-height:1.55}
-.prog{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin:4px 0 12px}
-.prog i{display:block;height:100%;background:var(--pri);transition:width .3s}
-.speak{border:0;background:none;font-size:22px;cursor:pointer;vertical-align:middle}
-input[type=text],input[type=password],select{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;margin-top:6px}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:10px;font-size:15px;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%}
+html,body{margin:0;padding:0}
+html{background:var(--ink-deep)}
+body{min-height:100vh;background:repeating-linear-gradient(135deg,rgba(255,255,255,.025) 0 1px,transparent 1px 16px),radial-gradient(circle at 20% -10%,#1d3252 0%,var(--ink) 55%,var(--ink-deep) 100%);font-family:'Inter',-apple-system,"PingFang TC","Noto Sans TC",sans-serif;color:var(--text);-webkit-tap-highlight-color:transparent}
+header{position:sticky;top:0;z-index:5;background:rgba(15,27,45,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:var(--paper);padding:12px 14px 0;border-bottom:1px solid rgba(247,241,225,.08)}
+.top{display:flex;align-items:center;gap:12px;max-width:760px;margin:0 auto 4px}
+.top a{color:var(--gold);text-decoration:none;font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap;border:1px solid rgba(217,164,65,.45);border-radius:999px;padding:4px 10px}
+.top a:hover{background:rgba(217,164,65,.12)}
+.brand{line-height:1.15}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+h1{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;margin:0;white-space:nowrap}
+.who{white-space:nowrap;margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted-ink);display:flex;gap:8px;align-items:center}
+.who button{white-space:nowrap;border:1px solid rgba(247,241,225,.3);background:none;color:var(--muted-ink);border-radius:999px;padding:4px 11px;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer}
+.who button:hover{border-color:var(--gold);color:var(--gold)}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;max-width:760px;margin:0 auto}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:0 0 auto;border:0;background:none;padding:10px 12px;font-family:'Space Grotesk','PingFang TC',sans-serif;font-size:15px;font-weight:500;color:var(--muted-ink);border-bottom:3px solid transparent;cursor:pointer}
+.tabs button:hover{color:var(--paper)}
+.tabs button.on{color:var(--paper);border-color:var(--gold);font-weight:700}
+main{max-width:640px;margin:0 auto;padding:18px 14px 90px}
+main > .mute:not(.card), main > p.mute{color:var(--muted-ink);font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.02em}
+.bar{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px;align-items:center}
+.chip{border:1.5px solid rgba(247,241,225,.22);background:rgba(247,241,225,.04);color:var(--paper);border-radius:999px;padding:6px 13px;font-family:'Space Grotesk','PingFang TC',sans-serif;font-size:13.5px;font-weight:500;cursor:pointer;transition:border-color .15s}
+.chip:hover{border-color:var(--gold)}
+.chip.on{background:var(--gold);border-color:var(--gold);color:var(--ink);font-weight:700}
+.chip.lock{opacity:.5}
+.card .chip{border-color:var(--line);color:var(--text);background:#fff}
+.card .chip:hover{border-color:var(--gold)}
+label.sw{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted-ink)}
+label.sw input{accent-color:var(--gold)}
+.card{position:relative;background:var(--paper);border-radius:20px;padding:22px;margin-bottom:14px;box-shadow:0 18px 40px rgba(0,0,0,.35)}
+.card .mute{color:var(--muted);font-size:13.5px}
+.word{font-family:'Space Grotesk',sans-serif;font-size:32px;font-weight:700;letter-spacing:.2px;word-break:break-word;color:var(--ink)}
+.pos{font-family:'IBM Plex Mono',monospace;color:var(--muted);font-size:12px;margin-left:8px;text-transform:lowercase}
+.zh{font-size:20px;margin-top:12px;color:var(--text);font-weight:500}
+.def{font-size:16.5px;margin-top:10px;line-height:1.55;color:var(--text)}
+.ex{font-style:italic;color:var(--slate);margin-top:10px;line-height:1.55;border-left:3px solid var(--gold);padding-left:10px}
+.mute{color:var(--muted);font-size:14px}
+.row{display:flex;gap:8px;margin-top:16px}
+.btn{flex:1;border:0;border-radius:999px;padding:13px 10px;font-family:'Space Grotesk','PingFang TC',sans-serif;font-size:15px;font-weight:700;letter-spacing:.02em;cursor:pointer;background:var(--ink);color:var(--paper)}
+.btn:active{transform:scale(.99)}
+.btn:focus-visible{outline:2.5px solid var(--gold);outline-offset:2px}
+.btn.gray{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+.btn.red{background:var(--coral)}.btn.amber{background:var(--gold);color:var(--ink)}.btn.green{background:var(--teal)}
+.opt{display:flex;align-items:center;width:100%;text-align:left;border:1.5px solid var(--line);background:#fff;border-radius:13px;padding:12px 14px;font-family:'Inter','PingFang TC',sans-serif;font-size:15.5px;color:var(--text);margin-top:9px;cursor:pointer;line-height:1.4;transition:border-color .15s,background .15s}
+.opt:hover{border-color:var(--gold)}
+.opt:disabled{color:var(--text);opacity:1;cursor:default}
+.opt:disabled:hover{border-color:var(--line)}
+.opt.right,.opt.right:hover{border-color:var(--teal);background:rgba(47,111,98,.1)}
+.opt.wrong,.opt.wrong:hover{border-color:var(--coral);background:rgba(192,87,62,.08)}
+.fb{margin-top:14px;padding:14px 16px;border-radius:13px;background:var(--paper-dim);line-height:1.6;font-size:15px}
+.prog{height:5px;background:rgba(247,241,225,.14);border-radius:99px;overflow:hidden;margin:6px 0 14px}
+.prog i{display:block;height:100%;background:var(--gold);transition:width .3s}
+.speak{border:0;background:none;font-size:20px;cursor:pointer;vertical-align:middle;margin-left:4px}
+input[type=text],input[type=password],select{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:13px;font-size:16px;margin-top:10px;background:#fff;color:var(--text);font-family:'IBM Plex Mono',monospace}
+input[type=text]:focus{outline:none;border-color:var(--gold)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink-deep);color:var(--paper);border:1px solid rgba(217,164,65,.4);padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%;z-index:9}
 .toast.show{opacity:1}
-table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:8px 4px;border-bottom:1px dashed rgba(35,38,43,.15);text-align:left}
+th{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.card > b:first-child{display:block;font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .hide{display:none}
-.row.sticky{position:sticky;bottom:0;z-index:3;margin:14px -18px -18px;padding:12px 18px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 35%);border-radius:0 0 14px 14px}
-.row.sticky.out{margin:14px 0 0;background:linear-gradient(to bottom,rgba(245,246,248,0),var(--bg) 35%);border-radius:0}
+.row.sticky{position:sticky;bottom:0;z-index:3;margin:16px -22px -22px;padding:12px 22px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to bottom,rgba(247,241,225,0),var(--paper) 35%);border-radius:0 0 20px 20px}
+.row.sticky.out{margin:14px 0 0;padding-left:0;padding-right:0;background:linear-gradient(to bottom,rgba(15,27,45,0),rgba(15,27,45,.95) 40%);border-radius:0}
 .kbd{display:none}
-@media (hover:hover) and (pointer:fine){.kbd{display:inline-block;margin-left:8px;font-size:12px;opacity:.65;border:1px solid currentColor;border-radius:5px;padding:0 5px}.kbd-tip{display:block!important}}
-.kbd-tip{display:none;margin-top:8px;text-align:center;font-size:13px;color:var(--mute)}
-@media (min-width:720px){main{max-width:760px}.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}.opts .opt{margin-top:0;height:100%}}
-label.sw{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--mute)}
-details summary{cursor:pointer;color:var(--pri)}
+@media (hover:hover) and (pointer:fine){.kbd{display:inline-block;margin-left:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;opacity:.6;border:1px solid currentColor;border-radius:5px;padding:0 5px}.kbd-tip{display:block!important}}
+.kbd-tip{display:none;margin-top:10px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted)}
+@media (min-width:720px){main{max-width:760px}.opts{display:grid;grid-template-columns:1fr 1fr;gap:9px}.opts .opt{margin-top:0;height:100%}}
+details summary{cursor:pointer;color:var(--gold-deep)}
+@media (max-width:440px){.eyebrow{display:none}.who span{display:none}h1{font-size:17px}}
+@media (prefers-reduced-motion:reduce){.opt,.chip,.prog i{transition:none}}
 </style>
 </head>
 <body>
 <header>
-  <div class="top"><a href="index.html">← 登機證</a><h1>單字・聽寫</h1><div class="who" id="who"></div></div>
+  <div class="top"><a href="index.html">← 登機證</a><div class="brand"><div class="eyebrow">Passport to English · Vocab</div><h1>單字・聽寫</h1></div><div class="who" id="who"></div></div>
   <nav class="tabs" id="tabs"></nav>
 </header>
 <main id="app"><p class="mute">載入題庫中…</p></main>
@@ -483,7 +513,7 @@ function viewGlance(root) {
     playing = true; playBtn.textContent = "■ 停止";
     for (let i = 0; i < page.length && playing; i++) {
       const row = document.getElementById("g" + i); if (!row) break;
-      row.style.background = "#eff6ff"; row.scrollIntoView({ block: "center", behavior: "smooth" });
+      row.style.background = "rgba(217,164,65,.15)"; row.scrollIntoView({ block: "center", behavior: "smooth" });
       await new Promise((res) => { const u = new SpeechSynthesisUtterance(page[i].w); u.lang = "en-US"; u.rate = 0.9; u.onend = res; u.onerror = res; speechSynthesis.speak(u); });
       await new Promise((res) => setTimeout(res, 1000));
       row.style.background = "";
